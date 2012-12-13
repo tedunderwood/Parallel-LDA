@@ -69,7 +69,7 @@ public class BasicLDA {
 				}
 			}
 			
-			if (iter % 50 == 3) {
+			if (iter % 100 == 3) {
 				corpus.exportTopics(outPath, topics(100));
 				exportTheta("/Users/tunderwood/LDA/ThetaDistrib.txt");
 			}

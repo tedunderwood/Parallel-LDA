@@ -80,7 +80,7 @@ public class SparseTable {
 		
 		for (int i=0; i < D; ++i){
 			wordsSofar += docSizes.get(i);
-			if (wordsSofar + halfAverageDocsize > wordsPerPart) {
+			if (wordsSofar + halfAverageDocsize > wordsPerPart | i == D-1) {
 				partitionCuts[partitionCounter] = i;
 				partitionSizes[partitionCounter] = wordsSofar;
 				wordsSofar = 0;
@@ -89,11 +89,8 @@ public class SparseTable {
 		}
 		partitionCuts[partitionCount - 1] = D - 1;
 		
-		for (int i = 1; i < partitionCount; ++i){
-			System.out.println(partitionCuts[i - 1] + " - " + partitionSizes[i - 1]);
-			if (partitionCuts[i-1] >= partitionCuts[i]) {
-				System.out.println("Error in partitioning of the corpus.");
-			}
+		for (int i = 0; i < partitionCount; ++i){
+			System.out.println(partitionCuts[i] + " - " + partitionSizes[i]);
 		}
 		
 		// Now actually build partitions.

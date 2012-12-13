@@ -17,6 +17,8 @@ public class Gibbs {
 	int minTime;
 	int maxTime;
 	int timespan;
+	double alpha;
+	double beta;
 	int[][] VinT;
 	int[][] TinD;
 	int[] Zct;
@@ -38,6 +40,9 @@ public Gibbs(int[] words, int[] docs, int[] topics, int[] timestamp, int[] param
 	v = parameters[2];
 	n = parameters[3];
 	z = parameters[4];
+	alpha = 50 / (double) z;
+	beta = 200 / (double) v;
+	System.out.println("d: " + d + " v: " + v + " n: " + n + " alpha: " + alpha + " beta: " + beta);
 	minTime = parameters[5];
 	maxTime = parameters[6];
 	timespan = (maxTime - minTime) + 1;
@@ -131,6 +136,14 @@ public Gibbs(int[] words, int[] docs, int[] topics, int[] timestamp, int[] param
 }
 
 public void cycle(int[][] typesinTopic, int[] topicTotal){
+	// This method does most of the actual work of analysis.
+	// Each Gibbs partition resamples topic-assignments for the part of
+	// the corpus in that partition. This is done in isolation from
+	// other partitions, except that the shared matrix of wordtype-topic
+	// distributions, and total topic sizes, is updated at the
+	// beginning of each sampling loop. Those arrays are passed
+	// to this method as parameters.
+	
 	for (int i = 0; i < n; ++i){
 		int t = zid[i];
 		-- TinD[t][did[i]];
@@ -140,7 +153,7 @@ public void cycle(int[][] typesinTopic, int[] topicTotal){
 		-- topicTotal[t];
 		double[] Prob = new double[z];
 		for (int top = 0; top < z; ++top){
-			Prob[top] = (( (typesinTopic[vid[i]][top] + .05) * (TinD[top][did[i]] + 1) ) / (double) (topicTotal[top] + d));
+			Prob[top] = (( (typesinTopic[vid[i]][top] + beta) * (TinD[top][did[i]] + alpha) ) / (double) (topicTotal[top] + d));
 		}
 		Multinomial distribution = new Multinomial(Prob);
 		t = distribution.sample();
@@ -151,30 +164,30 @@ public void cycle(int[][] typesinTopic, int[] topicTotal){
 		++ Zct[t];
 		++ topicTotal[t];
 	}
-	int[][] topicTimes = new int[z][timespan];
-	for (int t = 0; t < z; ++t) {
-		Arrays.fill(topicTimes[t], 0);
-	}
-	for (int i = 0; i < n; ++i){
-		int startPt = timestamp[i] - 5;
-		int endPt = timestamp[i] + 5;
-		if (startPt < minTime) {
-			startPt = minTime;
-		}
-		if (endPt > maxTime) {
-			endPt = maxTime;
-		}
-		startPt -= minTime;
-		endPt -= minTime;
-		for (int j = startPt; j < endPt + 1; ++j) {
-			++topicTimes[zid[i]][j];
-		}
-	}
-	for (int t = 0; t < z; ++ t) {
-		for (int year = 0; year < timespan; ++year) {
-			timeDist[t][year] = Math.log((((topicTimes[t][year] + 10) / ( (double) Zct[t] + 10)) * 100) + 5);
-		}
-	}
+//	int[][] topicTimes = new int[z][timespan];
+//	for (int t = 0; t < z; ++t) {
+//		Arrays.fill(topicTimes[t], 0);
+//	}
+//	for (int i = 0; i < n; ++i){
+//		int startPt = timestamp[i] - 5;
+//		int endPt = timestamp[i] + 5;
+//		if (startPt < minTime) {
+//			startPt = minTime;
+//		}
+//		if (endPt > maxTime) {
+//			endPt = maxTime;
+//		}
+//		startPt -= minTime;
+//		endPt -= minTime;
+//		for (int j = startPt; j < endPt + 1; ++j) {
+//			++topicTimes[zid[i]][j];
+//		}
+//	}
+//	for (int t = 0; t < z; ++ t) {
+//		for (int year = 0; year < timespan; ++year) {
+//			timeDist[t][year] = Math.log((((topicTimes[t][year] + 10) / ( (double) Zct[t] + 10)) * 100) + 5);
+//		}
+//	}
 }
 
 public String topicmap(){
@@ -203,7 +216,13 @@ public void perplex() {
 		int doc = did[i];
 		int t = zid[i];
 		double prob = ((TinD[t][doc] + 1) / (double) (docSize[doc] + d)) * ((VinT[word][t] + 1) / (double) (Zct[t] + v));
-		sumLog += Math.log(prob);
+		Double problog = Math.log(prob);
+		if (problog.isNaN()) {
+			System.out.println(TinD[t][doc] + " : " + docSize[doc]+ " : " + d + " : " + VinT[word][t] + " : " + Zct[t] + " : " + v);
+		}
+		else {
+			sumLog += Math.log(prob);
+		}
 	}
 	sumLog = 0-(sumLog / (double) n);
 	perplexity = Math.exp(sumLog);
